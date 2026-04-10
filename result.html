@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Solar Monitor | System Diagnostic Report</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        /* Main Container */
+        .diagnostic-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .diagnostic-container:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Header */
+        .report-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #ffb347;
+        }
+
+        .report-header h1 {
+            color: #ffd966;
+            font-weight: 700;
+            font-size: 1.6rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .report-header h1 i {
+            color: #ffb347;
+        }
+
+        .report-header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        /* Left Column - Fault Circle & Current Readings */
+        .left-column {
+            padding-right: 1rem;
+        }
+
+        /* Fault Rate Circle */
+        .fault-circle-wrapper {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .fault-circle-wrapper:hover {
+            background: rgba(255, 180, 71, 0.08);
+            border-color: #ffb347;
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 1rem;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        circle {
+            fill: none;
+            stroke-width: 12;
+        }
+
+        .circle-bg {
+            stroke: rgba(255, 255, 255, 0.2);
+        }
+
+        .circle-progress {
+            stroke: #ffb347;
+            stroke-linecap: round;
+            transition: stroke-dasharray 1s ease;
+        }
+
+        .circle-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .circle-percent {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffb347;
+            line-height: 1;
+        }
+
+        .circle-label {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .fault-description {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            margin-top: 0.8rem;
+        }
+
+        .status-safe {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+
+        .status-monitor {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+            color: white;
+        }
+
+        .status-danger {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            color: white;
+        }
+
+        /* Current Readings */
+        .readings-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .readings-wrapper:hover {
+            background: rgba(255, 180, 71, 0.08);
+            border-color: #ffb347;
+        }
+
+        .section-title {
+            color: #ffd966;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title i {
+            color: #ffb347;
+        }
+
+        .readings-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .reading-box {
+            flex: 1;
+            text-align: center;
+            padding: 1rem 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .reading-box:hover {
+            background: rgba(255, 180, 71, 0.1);
+            border-color: #ffb347;
+        }
+
+        .reading-icon {
+            font-size: 1.8rem;
+            color: #ffb347;
+            margin-bottom: 0.5rem;
+        }
+
+        .reading-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+            margin-bottom: 0.3rem;
+        }
+
+        .reading-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.7rem;
+            margin-top: 0.3rem;
+        }
+
+        .reading-label i {
+            color: #ffd966;
+            font-size: 0.8rem;
+        }
+
+        /* Right Column */
+        .right-column {
+            padding-left: 1rem;
+        }
+
+        /* System Health Section */
+        .health-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .health-section:hover {
+            background: rgba(255, 180, 71, 0.08);
+            border-color: #ffb347;
+        }
+
+        .health-header {
+            color: #ffd966;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+        }
+        .health-percent-bar {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            height: 12px;
+            margin: 0.8rem 0 1.2rem 0;
+            overflow: hidden;
+        }
+
+        .health-percent-fill {
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            border-radius: 20px;
+            height: 100%;
+            width: 0%;
+            transition: width 0.8s ease;
+        }
+
+        .health-header i {
+            color: #ffb347;
+        }
+
+        .health-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            height: 20px;
+            margin: 0.5rem 0 1.2rem 0;
+            overflow: hidden;
+        }
+
+        .health-bar-fill {
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+            border-radius: 20px;
+            height: 100%;
+            width: 0%;
+            transition: width 0.8s ease;
+        }
+
+        .health-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .health-stat {
+            text-align: center;
+            flex: 1;
+        }
+
+        .health-stat-value {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-left: 0.1rem;
+        }
+
+        .health-stat-value.green {
+            color: #2ecc71;
+        }
+
+        .health-stat-value.red {
+            color: #e74c3c;
+        }
+
+        .health-stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .health-stat-label i {
+            margin-right: 0.5rem;
+        }
+
+        .health-stat-label .fa-exclamation-triangle {
+            color: #e74c3c;
+            position: relative;
+        }
+
+        .health-message {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.7rem;
+            text-align: center;
+            padding-top: 0.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Performance Charts */
+        .chart-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .chart-wrapper:hover {
+            background: rgba(255, 180, 71, 0.08);
+            border-color: #ffb347;
+        }
+
+        canvas {
+            max-height: 200px;
+            width: 100%;
+        }
+
+        .x-axis-label {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.65rem;
+            margin-top: 0.5rem;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.2rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .legend-color.orange {
+            background: #ffb347;
+        }
+
+        .legend-color.blue {
+            background: #3498db;
+        }
+
+        /* Back Button */
+        .btn-back-solar {
+            display: block;
+            width: fit-content;
+            margin: 2rem auto 0;
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+            border: none;
+            padding: 10px 35px;
+            border-radius: 50px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .btn-back-solar:hover {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        /* Vertical Divider */
+        .vertical-divider {
+            width: 1px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: 0 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .diagnostic-container {
+                padding: 1.2rem;
+            }
+            .left-column, .right-column {
+                padding: 0;
+            }
+            .vertical-divider {
+                display: none;
+            }
+            .progress-circle {
+                width: 140px;
+                height: 140px;
+            }
+            .reading-value {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="diagnostic-container">
+    <!-- Header -->
+    <div class="report-header">
+        <h1><i class="fas fa-chart-pie me-2"></i>System Diagnostic Report</h1>
+        <p><i class="fas fa-microchip me-1"></i> Analysis Based on Sensor Readings</p>
+    </div>
+
+    <!-- Two Columns Layout -->
+    <div class="row g-0">
+        <!-- LEFT COLUMN -->
+        <div class="col-md-6 left-column">
+            <!-- Fault Rate Circle -->
+            <div class="fault-circle-wrapper">
+                <div class="progress-circle" id="progressCircle"></div>
+                <div class="fault-description" id="faultDescription">--</div>
+                <div id="statusBadgeContainer"></div>
+            </div>
+
+            <!-- Current Readings -->
+            <div class="readings-wrapper">
+                <div class="section-title"><i class="fas fa-gauge-high me-2"></i>Current Readings</div>
+                <div class="readings-grid">
+                    <div class="reading-box">
+                        <div class="reading-icon"><i class="fas fa-bolt me-1"></i></div>
+                        <div class="reading-value" id="displayVoltage">--</div>
+                        <div class="reading-label">Voltage (V)</div>
+                    </div>
+                    <div class="reading-box">
+                        <div class="reading-icon"><i class="fas fa-water me-1"></i></div>
+                        <div class="reading-value" id="displayCurrent">--</div>
+                        <div class="reading-label">Current (A)</div>
+                    </div>
+                    <div class="reading-box">
+                        <div class="reading-icon"><i class="fas fa-temperature-high me-1"></i></div>
+                        <div class="reading-value" id="displayTemp">--</div>
+                        <div class="reading-label">Panel Temp (°C)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="col-md-6 right-column">
+            <!-- System Health -->
+            <div class="health-section">
+                <div class="health-header"><i class="fas fa-heartbeat me-2"></i>System Status</div>
+                <div class="health-bar">
+                    <div class="health-bar-fill" id="healthBarFill" style="width: 0%;"></div>
+                </div>
+                <div class="health-stats">
+                    <div class="health-stat">
+                        <div class="health-stat-label"><i class="fas fa-check-circle" style="color: #2ecc71;"></i> Healthy
+                            <span class="health-stat-value green" id="healthPercent">--</span>
+                        </div>
+                    </div>
+                    <div class="health-stat">
+                        <div class="health-stat-label">
+                            <i class="fas fa-exclamation-triangle" style="color: #e74c3c; font-size: 0.7rem;"></i> Fault Risk
+                            <span class="health-stat-value red" id="faultRiskValue">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="health-message" id="healthMessage">--</div>
+            </div>
+
+            <!-- Performance Charts -->
+            <div class="chart-wrapper">
+                <div class="section-title"><i class="fas fa-chart-bar me-2"></i>Performance Charts</div>
+                <canvas id="paramChart"></canvas>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color orange"></div>
+                        <span>Current Reading</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color blue"></div>
+                        <span>Ideal Range (Center)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <button class="btn-back-solar" onclick="goBack()">
+        <i class="fas fa-arrow-left me-2"></i>Back to Input Form
+    </button>
+</div>
+
+<script>
+    // Retrieve data from localStorage
+    const solarData = JSON.parse(localStorage.getItem('solarData'));
+   
+    // Function to calculate fault rate
+    function calculateFaultMetrics(voltage, current, temperature) {
+        let faultScore = 0;
+        if (voltage < 20 || voltage > 32) faultScore += 40;
+        else if (voltage < 22 || voltage > 29) faultScore += 20;
+        else if (voltage < 23.5 || voltage > 27.5) faultScore += 8;
+        if (current < 2.0 || current > 11) faultScore += 35;
+        else if (current < 3.0 || current > 9.5) faultScore += 18;
+        else if (current < 3.8 || current > 8.2) faultScore += 5;
+        if (temperature > 75 || temperature < -5) faultScore += 35;
+        else if (temperature > 62 || temperature < 0) faultScore += 25;
+        else if (temperature > 52 || temperature < 10) faultScore += 12;
+        else if (temperature > 45) faultScore += 5;
+        return Math.min(100, faultScore);
+    }
+   
+    // Function to get status
+    function getStatusAndDesc(faultRate) {
+        if (faultRate <= 30) {
+            return { text: "✓ SYSTEM IS SAFE", class: "status-safe", icon: "fas fa-shield-alt", description: "All parameters within optimal range." };
+        } else if (faultRate <= 65) {
+            return { text: "⚠️ MONITOR REQUIRED", class: "status-monitor", icon: "fas fa-eye", description: "Some parameters are outside ideal range." };
+        } else {
+            return { text: "🔴 CRITICAL RISK", class: "status-danger", icon: "fas fa-skull-crossbones", description: "Immediate inspection required!" };
+        }
+    }
+   
+    // Create circular progress
+    function createProgressCircle(percent) {
+        const circleContainer = document.getElementById('progressCircle');
+        const radius = 75;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (percent / 100) * circumference;
+        const svgHtml = `
+            <svg viewBox="0 0 180 180">
+                <circle cx="90" cy="90" r="${radius}" class="circle-bg"></circle>
+                <circle cx="90" cy="90" r="${radius}" class="circle-progress"
+                    style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"></circle>
+            </svg>
+            <div class="circle-text">
+                <div class="circle-percent">${Math.round(percent)}%</div>
+                <div class="circle-label">Fault Rate</div>
+            </div>
+        `;
+        circleContainer.innerHTML = svgHtml;
+    }
+   
+    if (solarData) {
+        const { voltage, current, temperature } = solarData;
+        const faultRate = calculateFaultMetrics(voltage, current, temperature);
+        const healthPercentValue = 100 - faultRate;
+        const status = getStatusAndDesc(faultRate);
+        console.log("Health Percent Value:", healthPercentValue);
+        console.log("Round Value:", Math.round(healthPercentValue));
+
+        // Update health bar fill
+        const healthBarFill = document.getElementById('healthBarFill');
+        if (healthBarFill) {
+            const healthWidth = Math.round(healthPercentValue);
+            healthBarFill.style.width = healthWidth + '%';
+            console.log("Health bar width:", healthWidth + "%");
+        } else {
+            console.log("Element 'healthBarFill' not found");
+        }
+
+        // Create circle
+        createProgressCircle(faultRate);
+       
+        // Update fault section
+        document.getElementById('faultDescription').innerHTML = status.description;
+        document.getElementById('statusBadgeContainer').innerHTML = `<div class="status-badge ${status.class}"><i class="${status.icon} me-1"></i>${status.text}</div>`;
+       
+        // Update readings
+        document.getElementById('displayVoltage').innerText = voltage.toFixed(1);
+        document.getElementById('displayCurrent').innerText = current.toFixed(1);
+        document.getElementById('displayTemp').innerText = temperature.toFixed(1);
+
+        // Update health section 
+        document.getElementById('healthPercent').innerHTML = `${Math.round(healthPercentValue)}%`;
+        document.getElementById('faultRiskValue').innerHTML = `${Math.round(faultRate)}%`;
+       
+        // Update health message
+        const healthMessageElement = document.getElementById('healthMessage');
+        if (faultRate <= 30) {
+            healthMessageElement.innerHTML = '<i class="fas fa-check-circle me-1 text-success"></i> System operating normally. No maintenance needed.';
+        } else if (faultRate <= 65) {
+            healthMessageElement.innerHTML = '<i class="fas fa-exclamation-triangle me-1 text-warning"></i> Performance degradation detected. Schedule maintenance soon.';
+        } else {
+            healthMessageElement.innerHTML = '<i class="fas fa-skull-crossbones me-1 text-danger"></i> Critical failure risk! Immediate action required.';
+        }
+       
+        // Create chart
+        const idealVoltage = 25, idealCurrent = 6, idealTemp = 35;
+        const ctx = document.getElementById('paramChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Voltage (V)', 'Current (A)', 'Panel Temp (°C)'],
+                datasets: [
+                    { label: 'Current Reading', data: [voltage, current, temperature], backgroundColor: '#ffb347', borderRadius: 6, barPercentage: 0.5 },
+                    { label: 'Ideal Range (Center)', data: [idealVoltage, idealCurrent, idealTemp], backgroundColor: '#3498db', borderRadius: 6, barPercentage: 0.5 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Value', color: '#ffd966' }, ticks: { color: '#e0e0e0', stepSize: 20 }, grid: { color: 'rgba(255,255,255,0.08)' } },
+                    x: { title: { display: true, text: 'Parameters', color: '#ffd966' }, ticks: { color: '#e0e0e0' }, grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+       
+    } else {
+        // Fallback
+        document.getElementById('faultDescription').innerHTML = 'No sensor data available.';
+        document.getElementById('statusBadgeContainer').innerHTML = '<div class="status-badge status-danger">⚠️ NO DATA</div>';
+        document.getElementById('displayVoltage').innerText = '--';
+        document.getElementById('displayCurrent').innerText = '--';
+        document.getElementById('displayTemp').innerText = '--';
+        document.getElementById('healthPercent').innerHTML = '--';
+        document.getElementById('faultRiskValue').innerHTML = '--';
+        createProgressCircle(0);
+    }
+   
+    function goBack() {
+        window.location.href = 'index.html';
+    }
+</script>
+
+</body>
+</html>
