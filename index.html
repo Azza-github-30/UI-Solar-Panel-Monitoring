@@ -111,7 +111,7 @@
             <div class="card card-custom p-4 p-md-5 text-white">
                 <div class="text-center mb-4">
                     <i class="fas fa-solar-panel fa-3x text-warning"></i>
-                    <h1 class="mt-3 fw-bold" style="color: #ffdd99;">Solar Panel</h1>
+                    <h1 class="mt-3 fw-bold" style="color: #ffd966;">Solar Panel</h1>
                     <h4 class="text-light-50">Monitoring & Maintenance System</h4>
                 </div>
                 
@@ -165,32 +165,55 @@
 </div>
 
 <script>
-    // Handle form submission and store data in localStorage to pass to result page
-    document.getElementById('predictForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Get values
-        const voltage = parseFloat(document.getElementById('voltage').value);
-        const current = parseFloat(document.getElementById('current').value);
-        const temperature = parseFloat(document.getElementById('temp').value);
-        
-        // Basic validation
-        if (isNaN(voltage) || isNaN(current) || isNaN(temperature)) {
-            alert("Please enter valid numeric values for Voltage, Current and Temperature.");
-            return;
-        }
-        
-        // Store in localStorage
-        const sensorData = {
-            voltage: voltage,
-            current: current,
-            temperature: temperature
-        };
-        localStorage.setItem('solarData', JSON.stringify(sensorData));
-        
-        // Redirect to prediction page
-        window.location.href = 'result.html';
-    });
+
+async function fetchSolarData() {
+
+    try {
+
+        // Connect to Flask API
+        const response =
+            await fetch("http://127.0.0.1:5000/solar-data"
+            );
+        // Convert response to JSON 
+        const data = await response.json();
+
+        // Fill input fields automatically 
+        document.getElementById("voltage").value =
+            data.voltage;
+
+        document.getElementById("current").value =
+            data.current;
+
+        document.getElementById("temp").value =
+            data.temperature;
+
+        // Save data in localStorage 
+        localStorage.setItem(
+            "solarData",
+            JSON.stringify(data)
+        );
+
+    } catch(error) {
+
+        console.log("API Connection Error:", error);
+    }
+}
+
+// Update values every second  
+setInterval(fetchSolarData, 1000);
+
+fetchSolarData();
+
+document.getElementById("predictForm")
+.addEventListener("submit", function(e){
+
+    e.preventDefault();
+
+    // Redirect to result page 
+    window.location.href = "result.html";
+
+});
+
 </script>
 
 <!-- Bootstrap JS Bundle (optional for toggles, but good practice) -->

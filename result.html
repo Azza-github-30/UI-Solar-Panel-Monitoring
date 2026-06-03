@@ -551,8 +551,43 @@
 </div>
 
 <script>
+
+// Update data from Flask API every 5 seconds 
+async function updateData() {
+
+    try {
+
+        // Fetch solar data 
+        const response =
+            await fetch("http://127.0.0.1:5000/solar-data");
+
+        // Convert response to JSON
+        const data = await response.json();
+
+        // Store updated data
+        localStorage.setItem(
+            "solarData",
+            JSON.stringify(data)
+        );
+
+        // Reload page to update charts and values
+        location.reload();
+
+    } catch(error) {
+
+        console.log("API Connection Error:", error);
+    }
+}
+
+// Refresh every 5 seconds
+setInterval(updateData, 5000);
+
+</script>
+
+<script>
     // Retrieve data from localStorage
     const solarData = JSON.parse(localStorage.getItem('solarData'));
+    const predictionData = JSON.parse(localStorage.getItem('predictionResult'));
    
     // Function to calculate fault rate
     function calculateFaultMetrics(voltage, current, temperature) {
@@ -608,6 +643,14 @@
         const status = getStatusAndDesc(faultRate);
         console.log("Health Percent Value:", healthPercentValue);
         console.log("Round Value:", Math.round(healthPercentValue));
+
+        if(predictionData){
+        document.getElementById(
+            "predictionText"
+        ).innerHTML =
+            "Prediction: " +
+            predictionData.prediction;
+        }
 
         // Update health bar fill
         const healthBarFill = document.getElementById('healthBarFill');
